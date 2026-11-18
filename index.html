@@ -219,6 +219,26 @@
   .phlist img { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:2px; background:#eef2f5; }
   .phlist input { font:inherit; font-size:14px; padding:6px 8px; border:1px solid #bcc7d1; border-radius:3px; }
   .phlist button { align-self:flex-start; font:inherit; font-size:12.5px; font-weight:600; color:#b42318; background:none; border:0; padding:2px 0; cursor:pointer; }
+  .talk { border:2px solid var(--navy); background:#f4f7fb; }
+  .talk legend { font-size:22px; }
+  .talkbar { display:flex; flex-wrap:wrap; gap:10px; margin:4px 0 8px; }
+  .talkmic, .talkfill { font:inherit; font-weight:700; font-size:16px; padding:12px 18px; border-radius:6px; cursor:pointer; }
+  .talkmic { background:var(--navy); color:#fff; border:2px solid var(--navy); display:inline-flex; align-items:center; gap:10px; }
+  .talkmic .tl { font-size:16px; font-weight:700; letter-spacing:0; text-transform:none; }
+  .talkmic .dot { width:12px; height:12px; border-radius:50%; background:#fff; }
+  .talkmic[aria-pressed="true"] { background:#b3261e; border-color:#b3261e; }
+  .talkmic[aria-pressed="true"] .dot { animation:talkpulse 1s ease-in-out infinite; }
+  @keyframes talkpulse { 50% { opacity:.25; } }
+  @media (prefers-reduced-motion: reduce) { .talkmic[aria-pressed="true"] .dot { animation:none; } }
+  .talkfill { background:#fff; color:var(--navy); border:2px solid var(--navy); }
+  .talkmic:focus-visible, .talkfill:focus-visible { outline:3px solid #f2b705; outline-offset:2px; }
+  .talk textarea { width:100%; min-height:120px; }
+  .talkres { margin-top:10px; font-size:15px; }
+  .talkres ul { margin:6px 0 0; padding-left:20px; columns:2; column-gap:24px; }
+  @media (max-width:640px) { .talkres ul { columns:1; } }
+  .talkres a { color:var(--navy); }
+  .vfill { outline:3px solid #f2b705 !important; outline-offset:2px; background-color:#fff8d6 !important; }
+  label.q.vfill-q::after { content:"Filled from your description. Check it."; display:block; font-size:13px; font-weight:600; color:#7a5b00; margin-top:2px; }
   .pcam { border:2px solid var(--navy); border-radius:6px; padding:10px 12px; margin:6px 0 14px; background:#f4f7fb; }
   .pcam .pc-h { display:block; font-size:18px; font-weight:800; letter-spacing:.02em; color:var(--navy); line-height:1.25; }
   .pcam .pc-t { display:block; font-size:14px; margin:3px 0 6px; }
@@ -653,6 +673,19 @@
     <label class="pcard"><input type="radio" name="Portal" value="Builder" required><b>I'm a builder</b><span>Licensed Michigan contractor. Starting at $399.</span></label>
     <label class="pcard"><input type="radio" name="Portal" value="Homeowner" required><b>I'm a homeowner</b><span>Planning your own project. Starting at $570.</span></label>
   </div>
+</fieldset>
+
+<fieldset id="sec-talk" class="talk">
+  <legend>Talk it through</legend>
+  <p class="hint">Tap the mic and describe the job the way you would on the phone: what you're building, the size, the rooms, what stays and what's new, and the materials. Add your name, company, phone, email and the job address. We'll fill in what we can. Then check the highlighted answers and finish the rest.</p>
+  <div class="talkbar">
+    <button type="button" id="talkMic" class="talkmic" aria-pressed="false"><span class="dot" aria-hidden="true"></span><span class="tl">Start talking</span></button>
+    <button type="button" id="talkFill" class="talkfill">Fill in the form</button>
+  </div>
+  <p class="hint talkmsg" id="talkMsg" aria-live="polite"></p>
+  <label for="talkText" class="sub">What you said (you can also type or fix it here)</label>
+  <textarea id="talkText" name="T Spoken description" rows="5" placeholder="For example: Basement finish for the Smith family at 123 Main Street, Spring Lake. Basement is 44 by 28, poured walls, about 7 foot 9 to the joists. One bedroom with a new egress window, a 3/4 bath on the existing rough-in, and a rec room. Box in the beam and ducts. Leave the mechanical room unfinished."></textarea>
+  <div class="talkres" id="talkRes" hidden></div>
 </fieldset>
 
 <fieldset id="sec-A">
@@ -2203,5 +2236,297 @@
     });
   })();
 </script>
+<script>
+/* Talk it through: speech to text in the browser, then rules that fill the form from what was said.
+   Only empty answers are filled; every filled answer is highlighted for the person to check. */
+(function () {
+  var form = document.getElementById('intake'); if (!form) return;
+  var mic = document.getElementById('talkMic'), fillBtn = document.getElementById('talkFill'), box = document.getElementById('talkText'),
+      msg = document.getElementById('talkMsg'), res = document.getElementById('talkRes');
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition, rec = null, on = false, base = '';
+
+  // ---------- recording
+  function setMic(state) { on = state; mic.setAttribute('aria-pressed', state ? 'true' : 'false'); mic.querySelector('.tl').textContent = state ? 'Stop' : (box.value.trim() ? 'Keep talking' : 'Start talking'); }
+  if (!SR) {
+    mic.hidden = true;
+    msg.textContent = "This browser can't record here. Tap the box below and use your keyboard's microphone, or type it. Then tap Fill in the form.";
+  } else {
+    mic.addEventListener('click', function () {
+      if (on) { on = false; try { rec.stop(); } catch (e) {} setMic(false); return; }
+      rec = new SR(); rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true;
+      base = box.value.trim() ? box.value.trim() + ' ' : '';
+      rec.onresult = function (e) {
+        var fin = '', tmp = '';
+        for (var i = e.resultIndex; i < e.results.length; i++) { if (e.results[i].isFinal) fin += e.results[i][0].transcript; else tmp += e.results[i][0].transcript; }
+        if (fin) base += fin.trim() + ' ';
+        box.value = (base + tmp).replace(/\s+/g, ' ');
+      };
+      rec.onerror = function (e) { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { msg.textContent = 'Microphone access is blocked. Allow it in your browser settings, or type in the box below.'; setMic(false); } };
+      rec.onend = function () { if (on) { try { rec.start(); } catch (e) { setMic(false); } } };   // keep going through pauses until Stop
+      try { rec.start(); setMic(true); msg.textContent = 'Listening. Tap Stop when you are done.'; } catch (e) { msg.textContent = 'Could not start the microphone. You can type in the box below.'; }
+    });
+  }
+
+  // ---------- helpers
+  var filled = [];
+  function shown(el) { return el && !el.closest('[hidden]') && el.offsetParent !== null; }
+  function labelFor(el) {
+    var rs = el.closest('#roomScope'); if (rs) return rs.parentElement.querySelector('label.q');
+    var id = el.id, lab = id ? form.querySelector('label.q[for="' + id + '"]') : null;
+    if (!lab) { var p = el.closest('.opts, .dimrow') || el; lab = p.previousElementSibling; while (lab && !(lab.matches && lab.matches('label.q'))) lab = lab.previousElementSibling; }
+    if (!lab) { var c = el.parentElement; while (c && c !== form) { var l = c.querySelector('label.q'); if (l) { lab = l; break; } c = c.parentElement; } }
+    return lab;
+  }
+  function mark(el, shownEl) {
+    var t = shownEl || el; t.classList.add('vfill');
+    var lab = labelFor(el); if (lab) { lab.classList.add('vfill-q'); lab.classList.remove('is-na', 'is-inc'); }
+    filled.push({ el: t, lab: lab });
+  }
+  function fire(el) { el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
+  function setText(name, v) {
+    var el = form.querySelector('[name="' + name + '"]'); if (!el || !v || !shown(el) || el.value.trim()) return;
+    el.value = v; fire(el); mark(el);
+  }
+  function setSel(name, txt) {
+    var el = form.querySelector('select[name="' + name + '"]'); if (!el || !shown(el) || el.value) return;
+    var o = Array.prototype.find.call(el.options, function (o) { return o.text === txt || o.value === txt; }); if (!o || !o.value && o.text !== txt) return;
+    el.value = o.value || o.text; fire(el); mark(el);
+  }
+  function setOpt(group, val) {
+    var g = form.querySelector('.opts[data-group="' + group + '"]'); if (!g || !shown(g)) return;
+    var i = Array.prototype.find.call(g.querySelectorAll('input'), function (x) { return x.value === val; }); if (!i || i.checked) return;
+    i.checked = true; fire(i); mark(i, i.closest('label'));
+  }
+  function setDim(hidName, vals) {          // vals: [[ft, in], ...] in the widget's order
+    var h = form.querySelector('input[type=hidden][name="' + hidName + '"]'); if (!h) return; var row = h.closest('.dimrow');
+    if (!shown(row) || h.value) return;
+    var ws = row.querySelectorAll('.dimw'); if (ws.length !== vals.length) return;
+    var ok = true;
+    ws.forEach(function (w, k) { var f = w.querySelector('.dw-ft'), n = w.querySelector('.dw-in'); var ft = String(vals[k][0]);
+      if (!Array.prototype.some.call(f.options, function (o) { return o.value === ft; })) { ok = false; return; }
+      f.value = ft; if (n) n.value = String(vals[k][1] || 0); });
+    if (!ok) return; fire(ws[0].querySelector('.dw-ft')); mark(ws[0].querySelector('.dw-ft'), row);
+  }
+
+  // spoken numbers -> digits ("forty four by twenty eight" -> "44 by 28")
+  var U = { zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19 },
+      T = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+  function digits(t) {
+    t = t.replace(/\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)[\s-]+(one|two|three|four|five|six|seven|eight|nine)\b/g, function (m, a, b) { return T[a] + U[b]; });
+    t = t.replace(/\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\b/g, function (m) { return T[m]; });
+    t = t.replace(/\b(\d+) hundred(?: and)? (\d+)\b/g, function (m, a, b) { return +a * 100 + +b; });
+    t = t.replace(/\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)\b/g, function (m) { return U[m]; });
+    t = t.replace(/\b(\d+) hundred\b/g, function (m, a) { return +a * 100; });
+    return t;
+  }
+  function title(s) { return s.replace(/\s+/g, ' ').trim().replace(/\b([a-z])/g, function (m) { return m.toUpperCase(); }).replace(/ And /g, ' and ').replace(/ Of /g, ' of '); }
+  var MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+
+  // ---------- rules
+  function parse(raw) {
+    var t = ' ' + digits(raw.toLowerCase().replace(/[“”]/g, '"').replace(/’/g, "'")) + ' ';
+    // true when the phrase is said and not negated just before it ("no hot tub", "we don't want a pergola")
+    var has = function (re) {
+      var g = new RegExp(re.source, 'g'), m;
+      while ((m = g.exec(t))) {
+        var before = t.slice(Math.max(0, m.index - 30), m.index);
+        if (!/\b(no|not|without|don't|dont|won't|never|isn't|aren't)\b(?:\s+[a-z]+){0,2}\s*$/.test(before) || /^\s*no\b/.test(m[0])) return true;
+        if (m[0] === '') g.lastIndex++;
+      }
+      return false;
+    };
+
+    // who
+    if (has(/\b(i'm|i am|we're|we are) (a |the )?(builder|contractor|remodeler)\b|\bbuilder's license\b/)) clickPortal('Builder');
+    else if (has(/\b(i'm|i am|we're|we are) (the )?home ?owners?\b|\bmy (own )?(house|home)\b|\bour (own )?(house|home)\b/)) clickPortal('Homeowner');
+
+    // project type first: it decides which questions are on the form
+    if (has(/\bbasement\b/) && has(/\b(finish|finishing|finished)\b/)) setOpt('B1 Project type', 'Basement finish');
+    if (has(/\b(deck|porch)\b/) && !has(/\bno deck\b/)) setOpt('B1 Project type', 'Deck or porch');
+    if (has(/\baddition\b/)) setOpt('B1 Project type', 'Addition');
+    if (has(/\b(pole barn|pole building|post frame|accessory building|shed)\b/)) setOpt('B1 Project type', 'Pole barn or accessory building');
+    if (has(/\b(new|detached|attached|build a|building a|2 stall|3 stall|2 car|3 car) garage\b/) && !has(/\bpole barn\b/)) setOpt('B1 Project type', 'Garage');
+    if (has(/\b(remodel|remodeling|renovat\w*|gut)\b/) && !has(/\bbasement\b/)) setOpt('B1 Project type', 'Remodel');
+    if (has(/\bnew (home|house)\b|\bbuild(ing)? a (new )?(home|house)\b/)) setOpt('B1 Project type', 'New home');
+    var type = function (v) { var g = form.querySelector('.opts[data-group="B1 Project type"] input[value="' + v + '"]'); return g && g.checked; };
+
+    // contact
+    var m;
+    if ((m = t.match(/(\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4})\b/))) setText('A2 Phone', m[1].replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3'));
+    if ((m = t.match(/\b([a-z0-9._-]+@[a-z0-9-]+(?:\.[a-z]+)+)\b/))) setText('A2 Email', m[1]);
+    else if ((m = t.match(/\b(?:email(?: address)? is |e-mail is )?([a-z0-9._-]+) at ((?:[a-z0-9-]+ ){0,3}?[a-z0-9-]+(?: dot [a-z0-9-]+)*) dot (com|net|org|us|biz|co)\b/)))
+      setText('A2 Email', m[1] + '@' + m[2].replace(/ dot /g, '.').replace(/ /g, '') + '.' + m[3]);
+    if ((m = raw.match(/\b(?:my name is|my name's|this is|i'm)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z']+){0,2})/))) {
+      var nm = m[1]; if (!/^(Building|Doing|Looking|Finishing|Working|With|From|A|The)\b/.test(nm)) setText('A2 Contact name', nm);
+    }
+    if ((m = raw.match(/\b(?:company is|company's|company name is|business is|we're|i'm with|i am with|from|with)\s+([A-Z][\w&'.-]*(?:\s+(?:[A-Z][\w&'.-]*|&|and|of))*)/))) {
+      var co = m[1].replace(/\.\s+[A-Z].*$/, '.').replace(/\s+(and|of)$/, ''); if (co.split(' ').length <= 6) setText('A1 Company', co);
+    }
+    if ((m = raw.match(/\b([A-Z][\w&'-]*(?:\s+[A-Z][\w&'-]*){0,4}\s+(?:Co\.?|Company|LLC|Inc\.?|Construction|Builders|Homes|Contracting|Remodeling|Decks))(?=[\s,.;]|$)/))) setText('A1 Company', m[1]);
+    if ((m = t.match(/\b(?:the )?(?:home ?owners?|owners?)(?:'s? names? (?:is|are)| (?:is|are))? ((?!is |are |the |and )[a-z']+(?: and [a-z']+)?(?: [a-z']+)?)(?=[,.;]| at | on | in | it | we | they | for | basement | deck | job )/)) && !/^(of|in|at|for|on|to)\b/.test(m[1]))
+      setText('A6 Owner', title(m[1]));
+    else if ((m = t.match(/\bfor (?:the )?([a-z']+) family\b/))) setText('A6 Owner', title(m[1]) + ' family');
+    if ((m = t.match(/\b(\d{2,6} [a-z0-9 .]+? (?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|court|ct|boulevard|blvd|way|trail|trl|circle|cir|place|pl|highway|hwy|parkway|pkwy|terrace))\b(?:[ ,]+(?:in )?([a-z]+(?: [a-z]+){0,2}))?(?:[ ,]+(?:mi|michigan))?(?:[ ,]+(\d{5}))?(?=[ ,.;])/))) {
+      var cw = (m[2] || '').replace(/\b(township|twp|and|the|in|it|is|we|mi|michigan)\b.*$/, '').trim();
+      var city = cw && !/^(and|the|it|we|is|with|for|basement|deck)\b/.test(cw) ? ', ' + title(cw) : '';
+      setText('A3 Job address', title(m[1]) + city + (m[3] ? ', MI ' + m[3] : (city ? ', MI' : '')));
+    }
+    if ((m = t.match(/\b([a-z]+(?: [a-z]+)?) (township|twp)\b/)) && !/^(the|in|a|our)$/.test(m[1])) setText('A5 Permit authority', title(m[1].replace(/^(in|the) /, '')) + ' Township');
+    else if ((m = t.match(/\b(?:city|village) of ([a-z]+(?: [a-z]+)?)\b/))) setText('A5 Permit authority', (/village/.test(m[0]) ? 'Village of ' : 'City of ') + title(m[1]));
+    if ((m = t.match(/\blicen[sc]e(?: number| no\.?| #)?(?: is)?\s*([0-9][0-9 -]{5,12}[0-9])\b/))) setText('A11 License number', m[1].replace(/[^0-9]/g, ''));
+    if ((m = t.match(new RegExp('\\b(?:by|before|need (?:them|it|the drawings) by) (' + MONTHS.join('|') + ') (\\d{1,2})(?:st|nd|rd|th)?\\b')))) {
+      var now = new Date(), mo = MONTHS.indexOf(m[1]), d = new Date(now.getFullYear(), mo, +m[2]); if (d < now) d.setFullYear(d.getFullYear() + 1);
+      setText('A7 Needed by', d.getFullYear() + '-' + String(mo + 1).padStart(2, '0') + '-' + String(+m[2]).padStart(2, '0'));
+    }
+
+    // description: what they said, as written
+    setText('B2 Description', raw.trim().replace(/\s+/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); }));
+
+    // sizes: "44 by 28", "44 x 28", "44 foot by 28 foot"
+    var dims = [], re = /\b(\d{1,3})(?:'| ?(?:feet|foot|ft))?(?: (\d{1,2})(?:"| ?inch(?:es)?)?)? ?(?:by|x) ?(\d{1,3})(?:'| ?(?:feet|foot|ft))?(?: (\d{1,2})(?:"| ?inch(?:es)?)?)?\b/g;
+    while ((m = re.exec(t))) dims.push([[+m[1], +(m[2] || 0)], [+m[3], +(m[4] || 0)]]);
+    if (dims.length) {
+      var dd = dims[0];
+      if (type('Deck or porch')) setDim('M1 Deck size', dd);
+      else if (type('Pole barn or accessory building')) setDim('N1 Building size', [[dd[0][0], 0], [dd[1][0], 0]]);
+      setDim('D1 Size', [[dd[0][0], 0], [dd[1][0], 0]]);
+    }
+    // counts
+    var cnt = function (w) { return w === 'a' || w === 'an' ? 1 : +w; };
+    if ((m = t.match(/\b(\d|a|an) (?:new )?bed ?rooms?\b/))) setSel('D3 Bedrooms', cnt(m[1]) >= 6 ? '6 or more' : String(cnt(m[1])));
+    if ((m = t.match(/\b(\d|a|an) (?:new )?(?:full )?(?:bath ?rooms?|baths?)\b/))) setSel('D3 Bathrooms', String(cnt(m[1])));
+    else if (has(/\b(3\/4|3 quarter|three quarter|full) bath/)) setSel('D3 Bathrooms', '1');
+    else if (has(/\bhalf bath\b/)) setSel('D3 Bathrooms', '1-1/2');
+
+    // basement
+    if (has(/\bpoured\b/)) setSel('P1 Wall type', 'Poured concrete'); else if (has(/\b(block|cinder ?block|cmu)\b/)) setSel('P1 Wall type', 'Block'); else if (has(/\bicf\b/)) setSel('P1 Wall type', 'ICF');
+    if ((m = t.match(/\b(\d)(?:'| ?(?:feet|foot|ft))[ -]?(\d{1,2})?(?:"| ?inch(?:es)?)?(?: \w+){0,4} (?:to the (?:bottom of the )?joists|ceiling|clearance|headroom)\b/)) || (m = t.match(/\b(?:joists?|ceiling)(?: \w+){0,4} (?:is |are |at |about |around )*(\d)(?:'| ?(?:feet|foot|ft))[ -]?(\d{1,2})?/)))
+      setDim('P2 Floor to joists', [[+m[1], +(m[2] || 0)]]);
+    if (has(/\bducts?\b/) && has(/\bbox(ed)? (it |them |those )?in|soffit|hide|hidden\b/)) setOpt('P2 Box in', 'Ducts');
+    if (has(/\bbeams?\b/) && has(/\bbox(ed)? (it |them |those )?in|soffit|hide|hidden\b/)) setOpt('P2 Box in', 'Beams');
+    if (has(/\bpipes?\b/) && has(/\bbox(ed)? (it |them |those )?in|soffit\b/)) setOpt('P2 Box in', 'Pipes');
+    if (has(/\b(dry|no water|never had water|no moisture)\b/)) setSel('P3 Moisture', 'None'); else if (has(/\bdamp/)) setSel('P3 Moisture', 'Some dampness'); else if (has(/\b(water (has )?(come|came|gets) in|leak)/)) setSel('P3 Moisture', 'Water has come in before');
+    if (has(/\begress\b/)) setSel('P4 Egress', has(/\bexisting egress\b|\begress (window )?(is )?already\b/) ? 'Existing egress window' : 'New egress window needed');
+    else if (has(/\bwalk ?out\b/) && has(/\bbasement\b/)) setSel('P4 Egress', 'Walkout door');
+    if (has(/\brough[ -]?ins?\b/)) setSel('P5 Rough-ins', has(/\bbar sink\b/) ? (has(/\bbath/) ? 'Bathroom and bar sink' : 'Bar sink') : 'Bathroom (toilet, sink, shower)');
+    if (has(/\b(mechanical|furnace|utility) (room|area)\b/) && has(/\bunfinished|leave|stays?|no work\b/)) setOpt('P6 Unfinished areas', 'Mechanical room');
+    if (has(/\bstorage\b/) && has(/\bunfinished|leave\b/)) setOpt('P6 Unfinished areas', 'Storage');
+    if (has(/\bbox(ed)? (it |them |those )?in|hide (the )?beam|hidden\b/)) setSel('E7 Exposed beams OK', 'No, keep them hidden');
+    if (has(/\brec(reation)? room\b/)) setOpt('G1 Rooms', 'Basement rec room');
+    if (has(/\boffice\b/)) setOpt('G1 Rooms', 'Office');
+    if (has(/\bexercise|gym\b/)) setOpt('G1 Rooms', 'Exercise room');
+
+    // interior and systems
+    if (has(/\bshaker\b/)) setSel('G2 Interior door style', 'Shaker');
+    if (has(/\bbi-?fold\b/)) setSel('G2 Closet doors', 'Bifold'); else if (has(/\bsliding (closet )?doors?\b|\bbypass\b/)) setSel('G2 Closet doors', 'Sliding'); else if (has(/\bsingle swing|single (closet )?door\b/)) setSel('G2 Closet doors', 'Single swing');
+    if (has(/\b(existing|same) stairs?\b|\bstairs? (stay|stays|are staying)\b/)) setSel('G3 Stairs', 'Existing stairs stay');
+    if (has(/\bforced air|furnace\b/)) setSel('G4 HVAC', 'Forced air'); else if (has(/\bboiler\b/)) setSel('G4 HVAC', 'Boiler'); else if (has(/\bmini[ -]?split\b/)) setSel('G4 HVAC', 'Mini-split');
+    if (has(/\bpropane\b/)) setSel('G4 Fuel', 'Propane'); else if (has(/\bnatural gas|gas furnace|gas heat\b/)) setSel('G4 Fuel', 'Natural gas');
+    if (has(/\b(existing|same|current) water heater|water heater (stays|is staying)\b/)) { setSel('G5 Water heater', 'Existing stays'); setSel('H4 Water heater type', 'Existing stays'); }
+    else if (has(/\btankless\b/)) { setSel('H4 Water heater type', 'Tankless'); setSel('G5 Water heater', 'Gas tankless'); }
+    if (has(/\bfireplace\b/)) setSel('G6 Fireplace', has(/\belectric fireplace\b/) ? 'Electric' : has(/\bgas fireplace\b/) ? 'Gas, direct vent' : '');
+    if (has(/\b(recessed|can|pot) lights?\b|\bcans\b/)) { setOpt('G14 Lighting garage and basement', 'Recessed lights'); setOpt('G9 Lighting living and family rooms', 'Recessed lights'); if (has(/\bbed ?room/)) setOpt('G10 Lighting bedrooms', 'Recessed lights'); }
+    if (has(/\b(exhaust|bath) fan\b/)) setOpt('G11 Lighting bathrooms', 'Exhaust fan with light');
+    if (has(/\bvanity light\b/)) setOpt('G11 Lighting bathrooms', 'Vanity light');
+    if (has(/\b(electrical|lights|outlets|receptacles|lighting)\b/)) setSel('G7 Electrical plan', 'Yes');
+    if (has(/\bshower insert|fiberglass shower|shower (stall|unit|kit)|one piece shower\b/)) setSel('H2 Main bath', 'Shower insert');
+    else if (has(/\btile shower\b/)) setSel('H2 Main bath', 'Walk-in tile shower'); else if (has(/\btub\b/)) setSel('H2 Main bath', 'Tub and shower combo');
+    if (has(/\bbath/)) { setSel('H2 Sinks', 'One sink per bath'); }
+    if (has(/\bsump\b/)) setOpt('H5 Water equipment', 'Sump pump');
+    if (has(/\bsoftener\b/)) setOpt('H5 Water equipment', 'Water softener');
+    if (has(/\bejector\b/)) setOpt('H5 Water equipment', 'Ejector pump');
+    if (has(/\b(existing|same|current) (electrical )?panel|panel (stays|is staying)\b/)) setSel('H12 Electrical panel', 'Existing panel');
+    if (has(/\bpanel\b/) && has(/\bno sub ?panel\b/)) setSel('H12 Subpanels', 'No subpanel');
+    if (has(/\b(2x4|2 by 4) walls?\b/)) setOpt('J1 Wall types', '2x4 interior walls');
+    if (has(/\bpoured|block\b/) && has(/\bbasement\b/)) setOpt('J1 Wall types', 'Block or poured foundation walls');
+    if (has(/\b(lvp|luxury vinyl|vinyl plank)\b/)) setOpt('Q1 Flooring', 'LVP'); if (has(/\bcarpet\b/)) setOpt('Q1 Flooring', 'Carpet'); if (has(/\btile floor|floor tile|tile in the bath/)) setOpt('Q1 Flooring', 'Tile');
+
+    // decks
+    if (type('Deck or porch')) {
+      if ((m = t.match(/\b(\d{1,2})(?:'| ?(?:feet|foot|ft))(?: (\d{1,2})(?:"| ?inch(?:es)?)?)? (?:off the ground|high|above (?:the )?(?:ground|grade)|tall)\b/))) setDim('M2 Height above grade', [[+m[1], +(m[2] || 0)]]);
+      if (has(/\bfree[ -]?standing\b/)) setSel('M3 Attachment', 'Free-standing'); else if (has(/\bledger|attached\b/)) setSel('M3 Attachment', 'Attached with a ledger');
+      if (has(/\bvinyl siding|wood siding|siding\b/)) setSel('M4 House wall', 'Vinyl or wood siding');
+      if (has(/\b(composite|trex|timbertech|azek)\b/)) setSel('M5 Decking', 'Composite (Trex, TimberTech, Azek or similar)'); else if (has(/\bpressure[ -]?treated|treated wood|pt decking\b/)) setSel('M5 Decking', 'Pressure-treated wood'); else if (has(/\bcedar\b/)) setSel('M5 Decking', 'Cedar'); else if (has(/\bpvc\b/)) setSel('M5 Decking', 'PVC');
+      if (has(/\baluminum rail/)) setSel('M6 Railing', 'Aluminum'); else if (has(/\bcable rail/)) setSel('M6 Railing', 'Cable (tensioned to pass the 4" sphere rule)'); else if (has(/\bglass rail/)) setSel('M6 Railing', 'Glass (safety glazing in a listed system)'); else if (has(/\bcomposite rail/)) setSel('M6 Railing', 'Composite'); else if (has(/\bwood rail/)) setSel('M6 Railing', 'Wood');
+      if (has(/\b(2|two) sets? of stairs\b/)) setSel('M7 Stair count', '2 sets'); else if (has(/\bno stairs\b/)) setSel('M7 Stair count', 'No stairs'); else if (has(/\bstairs?|steps\b/)) setSel('M7 Stair count', '1 set');
+      if (has(/\bfooting pads?|composite pads?|diamond pier/)) setSel('M8 Footings', 'Composite footing pads (our standard)'); else if (has(/\bpoured footings?|concrete footings?\b/)) setSel('M8 Footings', 'Poured concrete');
+      if (has(/\bpergola\b/)) setSel('M9 Roof or pergola', 'Pergola'); else if (has(/\b(roof over|covered)\b/)) setSel('M9 Roof or pergola', 'Roof (covered porch)'); else if (has(/\bno roof\b/)) setSel('M9 Roof or pergola', 'No');
+      if (has(/\bhot tub\b/)) setSel('M10 Heavy load', 'Yes, a hot tub'); else if (/\b(no|not|without)\b(?:\s+[a-z]+){0,2}\s+hot tub\b/.test(t)) setSel('M10 Heavy load', 'No');
+      var li = has(/\blights?\b/), ou = has(/\b(outlets?|receptacles?|plugs?)\b/);
+      if (li && ou) setSel('M11 Lights and outlets', 'Lights and outlets'); else if (li) setSel('M11 Lights and outlets', 'Lights'); else if (ou) setSel('M11 Lights and outlets', 'Outlets');
+    }
+    // pole barns and outbuildings
+    if (type('Pole barn or accessory building')) {
+      if ((m = t.match(/\b(\d{1,2})(?:'| ?(?:feet|foot|ft)) (?:side ?walls?|walls|eaves?|eave height)\b/))) setDim('N2 Eave height', [[+m[1], 0]]);
+      if (has(/\bpost[ -]?frame|pole barn\b/)) setSel('N3 Construction', 'Post-frame'); else if (has(/\bstick[ -]?built\b/)) setSel('N3 Construction', 'Stick-built');
+      if (has(/\bunheated\b/)) setSel('N5 Heat', 'Unheated'); else if (has(/\bheated\b/)) setSel('N5 Heat', 'Heated');
+      if ((m = t.match(/\b(\d|a|an|one) overhead doors?\b/))) setSel('N7 Overhead door count', String(Math.min(cnt(m[1]), 5)) === '5' ? '5 or more' : String(cnt(m[1])));
+      if (has(/\bconcrete floor|slab\b/)) setSel('N9 Floor', has(/\bfloor drain\b/) ? 'Concrete with a floor drain' : 'Concrete'); else if (has(/\bgravel floor\b/)) setSel('N9 Floor', 'Gravel');
+    }
+    // houses, additions, garages
+    if (has(/\b2 stor(y|ies)|two stor(y|ies)\b/)) setSel('D2 Stories', '2 story'); else if (has(/\branch|1 story|single story\b/)) setSel('D2 Stories', '1 story (ranch)');
+    if (has(/\b2x6 walls?|2 by 6 walls?\b/)) setSel('E3 Wall framing', '2x6 (R-20 cavity)');
+    if (has(/\bvinyl siding\b/) && !type('Deck or porch')) setSel('F1 Siding', 'Vinyl lap'); else if (has(/\b(lp|smart ?side)\b/)) setSel('F1 Siding', 'LP SmartSide lap'); else if (has(/\bboard and batten\b/)) setSel('F1 Siding', 'Board and batten');
+    if (has(/\b(architectural )?shingles?\b/)) setSel('F3 Roofing', 'Architectural shingles'); else if (has(/\bstanding seam\b/)) setSel('F3 Roofing', 'Standing seam metal');
+    if (has(/\bmatch(ing)? (the )?(existing|house)\b/)) setSel('J3 Match existing', 'Match the existing siding, trim and roofing');
+    roomScope(t);
+  }
+  function roomScope(t) {
+    var list = document.getElementById('roomScope'); if (!list || !shown(list)) return;
+    var said = function (re) { return re.test(t); };
+    list.querySelectorAll('li').forEach(function (li) {
+      if (li.querySelector('input:checked')) return;
+      var n = li.querySelector('.rn').textContent.toLowerCase(), pick = '';
+      if (/stair/.test(n) && said(/\b(existing|same) stairs?|stairs? stay/)) pick = 'Existing, no work';
+      else if (/mechanical|storage/.test(n) && said(/\b(mechanical|furnace|utility|storage)\b/) && said(/\bunfinished|leave|no work|stays?\b/)) pick = 'Existing, no work';
+      else if (/bed/.test(n) && said(/\bbed ?rooms?\b/)) pick = 'New or finish';
+      else if (/bath/.test(n) && said(/\bbath/)) pick = 'New or finish';
+      else if (/rec|family/.test(n) && said(/\b(rec(reation)?|family|living) room|rec area\b/)) pick = 'New or finish';
+      else if (/bar/.test(n) && said(/\bwet bar|bar sink\b/)) pick = 'New or finish';
+      else if (/office/.test(n) && said(/\boffice\b/)) pick = 'New or finish';
+      else if (/kitchen/.test(n) && said(/\bkitchen\b/)) pick = 'Remodel';
+      if (!pick) return;
+      var lab = Array.prototype.find.call(li.querySelectorAll('label'), function (l) { return l.textContent.trim() === pick; });
+      if (lab) { var i = lab.querySelector('input'); i.checked = true; fire(i); mark(i, li); }
+    });
+  }
+  function clickPortal(v) {
+    var r = form.querySelector('input[name=Portal][value="' + v + '"]'); if (!r || form.querySelector('input[name=Portal]:checked')) return;
+    r.checked = true; fire(r); mark(r, r.closest('label'));
+  }
+
+  // ---------- fill
+  fillBtn.addEventListener('click', function () {
+    if (on) { on = false; try { rec.stop(); } catch (e) {} setMic(false); }
+    var raw = box.value.trim();
+    if (raw.length < 15) { msg.textContent = 'Say or type a few sentences about the job first.'; return; }
+    filled = [];
+    parse(raw);
+    res.hidden = false; res.innerHTML = '';
+    if (!filled.length) { res.textContent = "We couldn't match anything to the questions yet. Add a few details (size, rooms, materials, address), or answer the questions below."; return; }
+    var head = document.createElement('p'); head.innerHTML = '<b>We filled in ' + filled.length + ' answer' + (filled.length === 1 ? '' : 's') + '.</b> They are highlighted in yellow. Check each one, then answer the rest.'; res.appendChild(head);
+    var ul = document.createElement('ul'), seen = {};
+    filled.forEach(function (f, i) {
+      var txt = f.lab ? Array.prototype.filter.call(f.lab.childNodes, function (n) { return n.nodeType === 3; }).map(function (n) { return n.textContent; }).join('').trim() : '';
+      if (!txt && f.lab) txt = f.lab.textContent.replace(/Doesn't apply.*$|In my drawings.*$/, '').replace(/[*]/g, '').replace(/\s*i$/, '').trim();
+      if (!txt) txt = f.el.closest('.portal') ? "Who's submitting" : 'Answer';
+      if (seen[txt]) return; seen[txt] = 1;
+      var li = document.createElement('li'), a = document.createElement('a'); a.href = '#'; a.textContent = txt.length > 70 ? txt.slice(0, 68) + '...' : txt;
+      a.addEventListener('click', function (e) { e.preventDefault(); f.el.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+      li.appendChild(a); ul.appendChild(li);
+    });
+    res.appendChild(ul);
+    msg.textContent = '';
+  });
+  // a highlight clears as soon as the person changes that answer
+  form.addEventListener('change', function (e) {
+    if (!e.isTrusted) return;
+    var t = e.target, w = t.closest('label') || t; w.classList.remove('vfill'); t.classList.remove('vfill');
+    var row = t.closest('.dimrow'); if (row) row.classList.remove('vfill');
+    var lab = labelFor(t); if (lab) lab.classList.remove('vfill-q');
+  });
+})();
+</script>
+
 </body>
 </html>
