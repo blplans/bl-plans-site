@@ -2392,9 +2392,12 @@
     box.focus();
   }
   var heard = false, restarts = 0;
+  // on iPhone only Safari may use speech from a web page; other iPhone browsers (Chrome, Firefox, Edge, DuckDuckGo, app browsers) refuse it
+  var iosOther = ios && /CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|DuckDuckGo|GSA\/|FBAN|FBAV|Instagram|Line\/|LinkedInApp|Snapchat|Twitter|YaBrowser|Brave/i.test(navigator.userAgent);
+  if (iosOther) SR = null;
   if (!SR) {
     mic.hidden = true;
-    say('To talk instead of type: tap the box below, then ' + KEYS + '. When you finish, tap Fill in the form.');
+    say('To talk instead of type: tap the box below, then ' + KEYS + '. When you finish, tap Fill in the form.' + (iosOther ? ' (In Safari you also get a Start talking button.)' : ''));
   } else {
     mic.addEventListener('click', function () {
       if (on) { on = false; try { rec.stop(); } catch (e) {} setMic(false); say(box.value.trim() ? 'Got it. Tap Fill in the form, or Keep talking to add more.' : ''); return; }
@@ -2412,7 +2415,7 @@
         if (c === 'no-speech' || c === 'aborted') return;                       // pause or our own stop: keep going / let onend decide
         on = false;
         if (c === 'not-allowed') useKeyboard(ios ? 'The microphone is blocked for this page (iPhone: Settings > Safari > Microphone > Allow).' : 'The microphone is blocked for this page. Allow it from the lock or settings icon next to the web address.');
-        else if (c === 'service-not-allowed') useKeyboard(ios ? 'Speech is turned off on this phone (Settings > General > Keyboard > Enable Dictation), or this browser does not allow it.' : 'This browser does not allow speech here.');
+        else if (c === 'service-not-allowed') useKeyboard(ios ? 'This browser can\'t use speech on this page. Open the page in Safari for the Start talking button, and make sure Siri or Dictation is on.' : 'This browser does not allow speech here.');
         else if (c === 'audio-capture') useKeyboard('No microphone was found.');
         else if (c === 'network') useKeyboard('The speech service could not be reached.');
         else useKeyboard('The microphone stopped (' + c + ').');
