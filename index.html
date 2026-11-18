@@ -234,6 +234,8 @@
   .talkmic:focus-visible, .talkfill:focus-visible { outline:3px solid #f2b705; outline-offset:2px; }
   .talk textarea { width:100%; min-height:120px; }
   .talkres { margin-top:10px; font-size:15px; }
+  .talkmsg { font-size:15px; color:var(--navy); font-weight:600; }
+  .talkmsg.warn { background:#fff4e5; border-left:4px solid #b3261e; padding:10px 12px; color:#5c1a14; }
   .talkres ul { margin:6px 0 0; padding-left:20px; columns:2; column-gap:24px; }
   @media (max-width:640px) { .talkres ul { columns:1; } }
   .talkres a { color:var(--navy); }
@@ -2247,23 +2249,47 @@
 
   // ---------- recording
   function setMic(state) { on = state; mic.setAttribute('aria-pressed', state ? 'true' : 'false'); mic.querySelector('.tl').textContent = state ? 'Stop' : (box.value.trim() ? 'Keep talking' : 'Start talking'); }
+  var ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var KEYS = ios ? 'tap the microphone on your keyboard (bottom right on iPhone)' : 'tap the microphone on your keyboard';
+  function say(t, warn) { msg.textContent = t; msg.classList.toggle('warn', !!warn); }
+  function useKeyboard(why) {
+    setMic(false); mic.hidden = true;
+    say(why + ' Use your keyboard instead: tap the box below, then ' + KEYS + ' and talk. When you finish, tap Fill in the form.', true);
+    box.focus();
+  }
+  var heard = false, restarts = 0;
   if (!SR) {
     mic.hidden = true;
-    msg.textContent = "This browser can't record here. Tap the box below and use your keyboard's microphone, or type it. Then tap Fill in the form.";
+    say('To talk instead of type: tap the box below, then ' + KEYS + '. When you finish, tap Fill in the form.');
   } else {
     mic.addEventListener('click', function () {
-      if (on) { on = false; try { rec.stop(); } catch (e) {} setMic(false); return; }
-      rec = new SR(); rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true;
-      base = box.value.trim() ? box.value.trim() + ' ' : '';
+      if (on) { on = false; try { rec.stop(); } catch (e) {} setMic(false); say(box.value.trim() ? 'Got it. Tap Fill in the form, or Keep talking to add more.' : ''); return; }
+      rec = new SR(); rec.lang = 'en-US'; rec.continuous = !ios; rec.interimResults = true;
+      base = box.value.trim() ? box.value.trim() + ' ' : ''; heard = false; restarts = 0;
       rec.onresult = function (e) {
-        var fin = '', tmp = '';
+        var fin = '', tmp = ''; heard = true; restarts = 0;
         for (var i = e.resultIndex; i < e.results.length; i++) { if (e.results[i].isFinal) fin += e.results[i][0].transcript; else tmp += e.results[i][0].transcript; }
         if (fin) base += fin.trim() + ' ';
         box.value = (base + tmp).replace(/\s+/g, ' ');
+        say('Listening. Tap Stop when you are done.');
       };
-      rec.onerror = function (e) { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { msg.textContent = 'Microphone access is blocked. Allow it in your browser settings, or type in the box below.'; setMic(false); } };
-      rec.onend = function () { if (on) { try { rec.start(); } catch (e) { setMic(false); } } };   // keep going through pauses until Stop
-      try { rec.start(); setMic(true); msg.textContent = 'Listening. Tap Stop when you are done.'; } catch (e) { msg.textContent = 'Could not start the microphone. You can type in the box below.'; }
+      rec.onerror = function (e) {
+        var c = e.error;
+        if (c === 'no-speech' || c === 'aborted') return;                       // pause or our own stop: keep going / let onend decide
+        on = false;
+        if (c === 'not-allowed') useKeyboard(ios ? 'The microphone is blocked for this page (iPhone: Settings > Safari > Microphone > Allow).' : 'The microphone is blocked for this page. Allow it from the lock or settings icon next to the web address.');
+        else if (c === 'service-not-allowed') useKeyboard(ios ? 'Speech is turned off on this phone (Settings > General > Keyboard > Enable Dictation), or this browser does not allow it.' : 'This browser does not allow speech here.');
+        else if (c === 'audio-capture') useKeyboard('No microphone was found.');
+        else if (c === 'network') useKeyboard('The speech service could not be reached.');
+        else useKeyboard('The microphone stopped (' + c + ').');
+      };
+      rec.onend = function () {
+        if (!on) return;
+        if (restarts++ < 20) { try { rec.start(); return; } catch (e) {} }        // keep going through pauses until Stop
+        setMic(false); say(box.value.trim() ? 'Stopped. Tap Fill in the form, or Keep talking to add more.' : 'Stopped. Tap Start talking and try again.');
+      };
+      say('Starting the microphone. If your browser asks, tap Allow.');
+      try { rec.start(); setMic(true); } catch (e) { useKeyboard('The microphone could not start.'); }
     });
   }
 
