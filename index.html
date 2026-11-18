@@ -220,6 +220,7 @@
   .phlist input { font:inherit; font-size:14px; padding:6px 8px; border:1px solid #bcc7d1; border-radius:3px; }
   .phlist button { align-self:flex-start; font:inherit; font-size:12.5px; font-weight:600; color:#b42318; background:none; border:0; padding:2px 0; cursor:pointer; }
   .qs-hide { display:none !important; }
+  .hint.lookup { color:#7a5b00; font-weight:600; margin:4px 0 10px; }
   .qsbar { display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; margin:0 0 18px; padding:12px 16px; background:#fff; border:1px solid var(--line, #d7dde5); border-left:4px solid var(--navy); font-size:15px; }
   .qsbar .qs-t { flex:1 1 260px; }
   .qsbar .qs-b, .restorebar button { font:inherit; font-weight:700; color:var(--navy); background:#fff; border:2px solid var(--navy); border-radius:6px; padding:8px 14px; cursor:pointer; }
@@ -2688,6 +2689,51 @@
     var row = t.closest('.dimrow'); if (row) row.classList.remove('vfill');
     var lab = labelFor(t); if (lab) lab.classList.remove('vfill-q');
   });
+})();
+</script>
+
+<script>
+/* Ottawa County lookup: after the job address is entered, find the parcel and the township, city or village
+   in the county's public parcel records, and fill A4 and A5 if they are empty. Quietly does nothing if not found. */
+(function () {
+  var form = document.getElementById('intake'); if (!form) return;
+  var A3 = form.querySelector('[name="A3 Job address"]'), A4 = form.querySelector('[name="A4 Parcel ID"]'), A5 = form.querySelector('[name="A5 Permit authority"]');
+  if (!A3) return;
+  var BASE = 'https://gis.miottawa.org/arcgis/rest/services/HostedServices/ParcelsPublic/MapServer/0';
+  var fields = null, note = document.createElement('p'); note.className = 'hint lookup'; note.hidden = true;
+  A3.insertAdjacentElement('afterend', note);
+  function pick(list, good, bad) { return (list.find(function (f) { var s = f.name + ' ' + (f.alias || ''); return good.test(s) && !(bad && bad.test(s)); }) || {}).name; }
+  function getFields() {
+    if (fields) return Promise.resolve(fields);
+    return fetch(BASE + '?f=json').then(function (r) { return r.json(); }).then(function (j) {
+      var fl = (j.fields || []).filter(function (f) { return f.type === 'esriFieldTypeString'; });
+      fields = { addr: pick(fl, /(prop|site|property|parcel|situs)[ _]?(addr|address)|^address$|^addr$/i, /mail|owner|tax ?payer|city|zip|state/i),
+                 pin: pick(fl, /pnum|parcel ?(num|no|number|id)|^pin$|parcelid/i, /old|prev|parent/i),
+                 unit: pick(fl, /gov(ernment)?[ _]?unit|unit[ _]?name|township|twp|municipal|juris|cvt|localunit/i, /tax|school|class/i) };
+      return fields;
+    });
+  }
+  function title(s) { return s.toLowerCase().replace(/\b([a-z])/g, function (m) { return m.toUpperCase(); }).replace(/ Of /g, ' of '); }
+  var last = '';
+  function look() {
+    var v = A3.value.trim(), m = v.match(/^(\d{1,6})\s+(?:[nsew]\.?\s+|north\s+|south\s+|east\s+|west\s+)?([a-z0-9']+)/i);
+    if (!m || v === last) return; last = v;
+    getFields().then(function (f) {
+      if (!f.addr || !f.pin) return null;
+      var where = "UPPER(" + f.addr + ") LIKE '" + m[1] + " %" + m[2].toUpperCase().replace(/'/g, "''") + "%'";
+      var q = BASE + '/query?where=' + encodeURIComponent(where) + '&outFields=' + [f.addr, f.pin, f.unit].filter(Boolean).join(',') + '&returnGeometry=false&resultRecordCount=5&f=json';
+      return fetch(q).then(function (r) { return r.json(); }).then(function (j) { return { f: f, rows: (j.features || []).map(function (x) { return x.attributes; }) }; });
+    }).then(function (res) {
+      if (!res || res.rows.length !== 1) { note.hidden = true; return; }
+      var row = res.rows[0], f = res.f, said = [];
+      if (A4 && !A4.value && row[f.pin]) { A4.value = row[f.pin]; A4.dispatchEvent(new Event('change', { bubbles: true })); A4.classList.add('vfill'); said.push('parcel ' + row[f.pin]); }
+      var unit = f.unit && row[f.unit] ? title(String(row[f.unit])) : '';
+      if (unit && !/(township|city|village|charter)/i.test(unit)) unit = unit + ' Township';
+      if (A5 && !A5.value && unit) { A5.value = unit; A5.dispatchEvent(new Event('change', { bubbles: true })); A5.classList.add('vfill'); said.push(unit); }
+      if (said.length) { note.textContent = 'Found in Ottawa County property records: ' + said.join(', ') + '. Check it.'; note.hidden = false; }
+    }).catch(function () { /* records not reachable: the person answers A4 and A5 themselves */ });
+  }
+  A3.addEventListener('change', look); A3.addEventListener('blur', look);
 })();
 </script>
 
