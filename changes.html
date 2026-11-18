@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Request changes | BL Plans</title>
+<meta name="description" content="Send every change to your BL Plans drawing set in one request. One round, one flat fee.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>
+  :root { --navy:#1b3a57; --deep:#0f2436; --ink:#1c2630; --muted:#5a6672; --line:#d6dde4; --paper:#eef2f5; --pencil:#f2b705; --red:#b42318; }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  body { margin:0; font-family:Archivo, "Helvetica Neue", Arial, sans-serif; color:var(--ink); background:var(--paper); line-height:1.55; font-size:16px; }
+  h1, h2 { font-stretch:112%; font-variation-settings:"wdth" 112; letter-spacing:-0.01em; }
+  a { color:var(--navy); }
+  :focus-visible { outline:3px solid var(--pencil); outline-offset:2px; }
+  header { background:var(--deep); }
+  .bar { max-width:860px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:14px 24px; }
+  .brand { color:#fff; text-decoration:none; font-weight:700; font-size:19px; }
+  .bar a.back { color:#d3dfea; text-decoration:none; font-size:15px; }
+  main { max-width:860px; margin:0 auto; padding:28px 24px 64px; }
+  h1 { font-size:34px; line-height:1.15; margin:8px 0 10px; color:var(--deep); }
+  .lead { font-size:18px; margin:0 0 22px; max-width:62ch; }
+  .rule { background:#fff; border-left:4px solid var(--navy); padding:14px 18px; margin:0 0 26px; }
+  .rule p { margin:0 0 6px; } .rule p:last-child { margin:0; }
+  form { background:#fff; border:1px solid var(--line); padding:24px; }
+  label { display:block; font-weight:700; margin:18px 0 6px; }
+  label:first-child { margin-top:0; }
+  .req { color:var(--red); }
+  .hint { color:var(--muted); font-size:14px; margin:-2px 0 8px; font-weight:400; }
+  input[type=text], input[type=email], input[type=tel], textarea, select { width:100%; font:inherit; padding:10px 12px; border:1px solid #b9c4cf; border-radius:4px; background:#fff; }
+  textarea { min-height:220px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:0 16px; }
+  @media (max-width:640px) { .grid { grid-template-columns:1fr; } h1 { font-size:28px; } }
+  .files label { font-weight:600; margin-top:12px; }
+  .agree { display:flex; gap:10px; align-items:flex-start; font-weight:400; margin-top:22px; }
+  .agree input { margin-top:5px; width:18px; height:18px; flex:none; }
+  button[type=submit] { margin-top:22px; font:inherit; font-weight:700; font-size:17px; background:var(--navy); color:#fff; border:0; border-radius:6px; padding:14px 24px; cursor:pointer; }
+  .err { color:var(--red); font-weight:600; margin-top:12px; }
+  .thanks { background:#fff; border:1px solid var(--line); padding:24px; }
+</style>
+</head>
+<body>
+<header><div class="bar"><a class="brand" href="/">BL Plans</a><a class="back" href="/">Back to blplans</a></div></header>
+<main>
+  <div id="sent" class="thanks" hidden>
+    <h1>Got your changes</h1>
+    <p>We'll email your invoice for this round. Once it's paid, we make every change on the list, log the round on the revision block and send the updated set, usually in 1 to 2 business days.</p>
+    <p>Thought of something else? <a href="/changes.html">Send another request</a> before you pay the invoice and we'll fold it into the same round.</p>
+  </div>
+  <div id="formside">
+    <h1>Request changes to your set</h1>
+    <p class="lead">List every change you want in one request. However many changes are on the list, they count as one round with one flat fee.</p>
+    <div class="rule">
+      <p><b>One round, one fee.</b> $50 for builders, $71 for homeowners, invoiced before we make the changes.</p>
+      <p>A round covers changes to what's already drawn: moving walls, doors and windows, changing sizes, materials and notes. Adding square footage, rooms, floors or sheets is quoted separately.</p>
+      <p>Review every sheet first, then send it all at once. Two requests are two rounds.</p>
+    </div>
+    <form name="change-request" method="POST" data-netlify="true" netlify-honeypot="bot-field" enctype="multipart/form-data" action="/changes.html?sent=1" id="chg" novalidate>
+      <input type="hidden" name="form-name" value="change-request">
+      <p hidden><label>Leave this empty <input name="bot-field"></label></p>
+      <div class="grid">
+        <div><label for="job">Job number <span class="req">*</span></label><p class="hint">On every title block, like BLP-9919.</p><input type="text" id="job" name="Job number" required autocomplete="off"></div>
+        <div><label for="nm">Your name <span class="req">*</span></label><p class="hint">&nbsp;</p><input type="text" id="nm" name="Name" required autocomplete="name"></div>
+        <div><label for="em">Email <span class="req">*</span></label><input type="email" id="em" name="Email" required autocomplete="email"></div>
+        <div><label for="ph">Phone</label><input type="tel" id="ph" name="Phone" autocomplete="tel"></div>
+      </div>
+      <label for="why">What's this round for?</label>
+      <select id="why" name="Reason">
+        <option>My own changes</option>
+        <option>The township's review comments</option>
+        <option>Both</option>
+      </select>
+      <label for="list">Every change you want <span class="req">*</span></label>
+      <p class="hint">One change per line, with the sheet number if you know it. For example: "A1.0: move the bedroom door 2 ft north." To talk instead of type, tap the box and use the microphone on your keyboard.</p>
+      <textarea id="list" name="Changes" required placeholder="1. A1.0: move the bedroom door 2 ft north&#10;2. A1.1: add an outlet on the bar wall&#10;3. Cover: change the owner's name to ..."></textarea>
+      <div class="files">
+        <label for="f1">Marked-up drawings (PDF or photo of your markups)</label>
+        <input type="file" id="f1" name="Markups" accept=".pdf,image/*">
+        <label for="f2">Township review letter, if any</label>
+        <input type="file" id="f2" name="Township letter" accept=".pdf,image/*">
+        <label for="f3">Another photo or file</label>
+        <input type="file" id="f3" name="Extra file" accept=".pdf,image/*">
+        <p class="hint">All files together must be under 8 MB. Large photos are shrunk on your phone before they're sent.</p>
+      </div>
+      <label class="agree"><input type="checkbox" id="ok" name="Everything in this round" value="Yes" required>
+        <span>This is everything I want changed in this round. I understand it's one flat fee for the round, invoiced before the changes are made, and that added square footage, rooms, floors or sheets are quoted separately.</span></label>
+      <button type="submit">Send my changes</button>
+      <p class="err" id="err" aria-live="polite"></p>
+    </form>
+  </div>
+</main>
+<script>
+(function () {
+  if (/[?&]sent=1/.test(location.search)) { document.getElementById('sent').hidden = false; document.getElementById('formside').hidden = true; return; }
+  var f = document.getElementById('chg'), err = document.getElementById('err');
+  // returning builders: their name, email and phone come back from the drawing request form on this device
+  try { var p = JSON.parse(localStorage.getItem('blp_profile_v1') || 'null');
+    if (p) { if (p['A2 Contact name']) f.Name.value = p['A2 Contact name']; if (p['A2 Email']) f.Email.value = p['A2 Email']; if (p['A2 Phone']) f.Phone.value = p['A2 Phone']; } } catch (e) {}
+  // shrink large photos so the request fits Netlify's 8 MB limit
+  function shrink(input) {
+    var file = input.files && input.files[0]; if (!file || !/^image\//.test(file.type) || file.size < 1.5e6 || !window.DataTransfer) return Promise.resolve();
+    return new Promise(function (res) {
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function () {
+        var k = Math.min(1, 2200 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(function (b) { URL.revokeObjectURL(url); if (b) { var dt = new DataTransfer(); dt.items.add(new File([b], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' })); input.files = dt.files; } res(); }, 'image/jpeg', 0.82);
+      };
+      img.onerror = function () { res(); }; img.src = url;
+    });
+  }
+  ['f1', 'f2', 'f3'].forEach(function (id) { var el = document.getElementById(id); el.addEventListener('change', function () { shrink(el); }); });
+  f.addEventListener('submit', function (e) {
+    var miss = [];
+    if (!f['Job number'].value.trim()) miss.push('job number');
+    if (!f.Name.value.trim()) miss.push('your name');
+    if (!/^\S+@\S+\.\S+$/.test(f.Email.value.trim())) miss.push('a valid email');
+    if (f.Changes.value.trim().length < 5) miss.push('the list of changes');
+    if (!document.getElementById('ok').checked) miss.push('the box confirming this is everything for this round');
+    var total = 0; ['f1', 'f2', 'f3'].forEach(function (id) { var x = document.getElementById(id).files[0]; if (x) total += x.size; });
+    if (total > 8e6) miss.push('files under 8 MB total');
+    if (miss.length) { e.preventDefault(); err.textContent = 'Please add ' + miss.join(', ') + '.'; }
+  });
+})();
+</script>
+</body>
+</html>
