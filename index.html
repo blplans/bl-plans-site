@@ -219,6 +219,12 @@
   .phlist img { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:2px; background:#eef2f5; }
   .phlist input { font:inherit; font-size:14px; padding:6px 8px; border:1px solid #bcc7d1; border-radius:3px; }
   .phlist button { align-self:flex-start; font:inherit; font-size:12.5px; font-weight:600; color:#b42318; background:none; border:0; padding:2px 0; cursor:pointer; }
+  .qs-hide { display:none !important; }
+  .qsbar { display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; margin:0 0 18px; padding:12px 16px; background:#fff; border:1px solid var(--line, #d7dde5); border-left:4px solid var(--navy); font-size:15px; }
+  .qsbar .qs-t { flex:1 1 260px; }
+  .qsbar .qs-b, .restorebar button { font:inherit; font-weight:700; color:var(--navy); background:#fff; border:2px solid var(--navy); border-radius:6px; padding:8px 14px; cursor:pointer; }
+  .restorebar { display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; margin:0 0 18px; padding:12px 16px; background:#eef6ee; border-left:4px solid #2e7d32; font-size:15px; }
+  .restorebar span { flex:1 1 260px; }
   .talk { border:2px solid var(--navy); background:#f4f7fb; }
   .talk legend { font-size:22px; }
   .talkbar { display:flex; flex-wrap:wrap; gap:10px; margin:4px 0 8px; }
@@ -2239,6 +2245,134 @@
   })();
 </script>
 <script>
+/* Short form, autosave and returning-builder details. */
+(function () {
+  var form = document.getElementById('intake'); if (!form) return;
+  var DRAFT = 'blp_draft_v1', PROFILE = 'blp_profile_v1';
+  var store = { get: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
+                set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+                del: function (k) { try { localStorage.removeItem(k); } catch (e) {} } };
+  function fire(el) { el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
+
+  // ---------- short form: only the questions that drive the drawings; everything else one tap away
+  var EXTRA = ['B8', 'D3', 'P2', 'P4', 'P5', 'P6', 'J5', 'M4', 'M5', 'M6', 'M7', 'M8', 'G1'];
+  var bar = document.createElement('div'); bar.className = 'qsbar';
+  bar.innerHTML = '<span class="qs-t">Showing the short form: just the questions we need to draw your job.</span><button type="button" class="qs-b" aria-pressed="false">Show every question</button>';
+  var talk = document.getElementById('sec-talk'); (talk || form.querySelector('#sec-A')).insertAdjacentElement('afterend', bar);
+  var btn = bar.querySelector('.qs-b'), txt = bar.querySelector('.qs-t');
+  function code(lab) { var m = lab.textContent.trim().match(/^([A-Z]\d+)\./); return m ? m[1] : ''; }
+  function block(lab) {
+    var w = lab.parentElement;
+    if (w && w !== form && !w.matches('fieldset') && w.querySelectorAll('label.q').length === 1 && !w.matches('.opts')) return [w];
+    var out = [lab], n = lab.nextElementSibling;
+    while (n && !(n.matches('label.q') || n.querySelector('label.q') || n.matches('.qsbar'))) { out.push(n); n = n.nextElementSibling; }
+    return out;
+  }
+  var groups = [];
+  form.querySelectorAll('label.q').forEach(function (lab) {
+    var sec = lab.closest('fieldset'); if (!sec || /sec-(K|L|talk)/.test(sec.id) || sec.querySelector('.portal')) return;
+    var keep = !!lab.querySelector('.req') || EXTRA.indexOf(code(lab)) > -1;
+    if (!keep) groups.push(block(lab));
+  });
+  function applyShort(on) {
+    form.classList.toggle('qs-on', on);
+    groups.forEach(function (g) { g.forEach(function (el) { el.classList.toggle('qs-hide', on && !el.classList.contains('qs-keep')); }); });
+    // hide sections that end up with nothing to answer, and their links in the side menu
+    form.querySelectorAll('fieldset[id^="sec-"]').forEach(function (f) {
+      if (/sec-(K|L|talk)/.test(f.id)) return;
+      var any = Array.prototype.some.call(f.querySelectorAll('label.q'), function (l) { return !l.closest('.qs-hide'); });
+      f.classList.toggle('qs-hide', on && !any);
+    });
+    document.querySelectorAll('.toc a').forEach(function (a) { var f = document.querySelector(a.getAttribute('href')); if (f) a.parentElement.classList.toggle('qs-hide', f.classList.contains('qs-hide')); });
+    btn.setAttribute('aria-pressed', on ? 'false' : 'true');
+    btn.textContent = on ? 'Show every question' : 'Back to the short form';
+    txt.textContent = on ? 'Showing the short form: just the questions we need to draw your job.' : 'Showing every question. More detail now means fewer calls later.';
+    store.set('blp_short', on);
+  }
+  btn.addEventListener('click', function () { applyShort(!form.classList.contains('qs-on')); });
+  // answers filled by the talk box stay visible even in the short form
+  window.blpReveal = function (el) { var b = el.closest('.qs-hide'); while (b) { b.classList.add('qs-keep'); b.classList.remove('qs-hide'); b = el.closest('.qs-hide'); }
+    var f = el.closest('fieldset'); if (f) { f.classList.remove('qs-hide'); var a = document.querySelector('.toc a[href="#' + f.id + '"]'); if (a) a.parentElement.classList.remove('qs-hide'); } };
+
+  // ---------- autosave
+  function key(el, i) {
+    if (el.closest('#roomScope') || el.closest('#sec-L') || el.type === 'file' || el.name === 'form-name' || el.name === 'bot-field') return null;
+    if (el.type === 'hidden') return null;
+    var row = el.closest('.dimrow');
+    if (row) { var h = row.querySelector('input[type=hidden]'), all = Array.prototype.indexOf.call(row.querySelectorAll('select'), el); return h ? 'dim:' + h.name + ':' + all : null; }
+    var og = el.closest('.opts'); if (og && (el.type === 'checkbox' || el.type === 'radio')) return 'opt:' + og.getAttribute('data-group') + '=' + el.value;
+    if (el.type === 'radio') return el.name ? 'rad:' + el.name + '=' + el.value : null;
+    if (el.type === 'checkbox') return el.name ? 'chk:' + el.name + '=' + el.value : (el.id ? 'chk#' + el.id : null);
+    return el.name ? 'v:' + el.name : (el.id ? 'v#' + el.id : null);
+  }
+  function controls() { return form.querySelectorAll('input, select, textarea'); }
+  var timer = null, restoring = false;
+  function save() {
+    if (restoring) return;
+    var v = {}, n = 0;
+    controls().forEach(function (el, i) { var k = key(el, i); if (!k) return;
+      if (el.type === 'checkbox' || el.type === 'radio') { if (el.checked) { v[k] = 1; n++; } }
+      else if (el.value) { v[k] = el.value; n++; } });
+    if (n) store.set(DRAFT, { t: Date.now(), v: v });
+  }
+  form.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(save, 500); });
+  form.addEventListener('change', function () { clearTimeout(timer); timer = setTimeout(save, 300); });
+
+  function restore(v) {
+    restoring = true;
+    var els = controls(), byKey = {};
+    els.forEach(function (el, i) { var k = key(el, i); if (k) byKey[k] = el; });
+    // who's submitting and the project type first: they decide which questions exist
+    Object.keys(v).filter(function (k) { return /^rad:Portal=|^opt:B1 Project type=/.test(k); }).forEach(function (k) { var el = byKey[k]; if (el && !el.checked) { el.checked = true; fire(el); } });
+    Object.keys(v).forEach(function (k) {
+      var el = byKey[k]; if (!el || /^rad:Portal=|^opt:B1 Project type=/.test(k)) return;
+      if (el.type === 'checkbox' || el.type === 'radio') { if (!el.checked) { el.checked = true; fire(el); } }
+      else if (!el.value) { el.value = v[k]; fire(el); }
+    });
+    restoring = false;
+  }
+  function banner(html, action, label) {
+    var b = document.createElement('div'); b.className = 'restorebar'; b.setAttribute('role', 'status');
+    b.innerHTML = '<span>' + html + '</span>'; var a = document.createElement('button'); a.type = 'button'; a.textContent = label;
+    a.addEventListener('click', action); b.appendChild(a);
+    form.insertBefore(b, form.querySelector('fieldset')); return b;
+  }
+
+  // ---------- returning builders: their company and license details come back on this device
+  var PKEYS = ['A1 Company', 'A2 Contact name', 'A2 Phone', 'A2 Email', 'A11 License number', 'A12 License type', 'A13 Name on license'];
+  form.addEventListener('submit', function (e) {
+    if (e.defaultPrevented) return;            // the form's own checks stopped it
+    var pv = {}, portal = form.querySelector('input[name=Portal]:checked');
+    if (portal) pv.Portal = portal.value;
+    PKEYS.forEach(function (n) { var el = form.querySelector('[name="' + n + '"]'); if (el && el.value) pv[n] = el.value; });
+    if (pv['A1 Company'] || pv['A2 Contact name']) store.set(PROFILE, pv);
+    store.del(DRAFT);
+  });
+
+  // ---------- start up
+  var shortPref = store.get('blp_short'); applyShort(shortPref === null ? true : !!shortPref);
+  var d = store.get(DRAFT), p = store.get(PROFILE);
+  if (d && d.v && Date.now() - d.t < 45 * 864e5) {
+    restore(d.v);
+    var when = new Date(d.t).toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+    var bb = banner('We brought back the answers you started on ' + when + '. Attachments need to be added again.', function () {
+      if (!confirm('Clear every answer and start over?')) return;
+      store.del(DRAFT); location.reload();
+    }, 'Start over');
+  } else if (p) {
+    restoring = true;
+    if (p.Portal) { var r = form.querySelector('input[name=Portal][value="' + p.Portal + '"]'); if (r && !r.checked) { r.checked = true; fire(r); } }
+    PKEYS.forEach(function (n) { var el = form.querySelector('[name="' + n + '"]'); if (el && !el.value && p[n]) { el.value = p[n]; fire(el); } });
+    restoring = false;
+    var first = (p['A2 Contact name'] || '').split(' ')[0];
+    banner('Welcome back' + (first ? ', ' + first : '') + '. We filled in your company and license details from last time.', function () {
+      store.del(PROFILE); PKEYS.forEach(function (n) { var el = form.querySelector('[name="' + n + '"]'); if (el) { el.value = ''; fire(el); } }); this.parentElement.remove();
+    }, 'Not you? Clear them');
+  }
+})();
+</script>
+
+<script>
 /* Talk it through: speech to text in the browser, then rules that fill the form from what was said.
    Only empty answers are filled; every filled answer is highlighted for the person to check. */
 (function () {
@@ -2295,7 +2429,7 @@
 
   // ---------- helpers
   var filled = [];
-  function shown(el) { return el && !el.closest('[hidden]') && el.offsetParent !== null; }
+  function shown(el) { return el && !el.closest('[hidden]') && (el.offsetParent !== null || !!el.closest('.qs-hide')); }
   function labelFor(el) {
     var rs = el.closest('#roomScope'); if (rs) return rs.parentElement.querySelector('label.q');
     var id = el.id, lab = id ? form.querySelector('label.q[for="' + id + '"]') : null;
@@ -2304,7 +2438,7 @@
     return lab;
   }
   function mark(el, shownEl) {
-    var t = shownEl || el; t.classList.add('vfill');
+    var t = shownEl || el; if (window.blpReveal) window.blpReveal(t); t.classList.add('vfill');
     var lab = labelFor(el); if (lab) { lab.classList.add('vfill-q'); lab.classList.remove('is-na', 'is-inc'); }
     filled.push({ el: t, lab: lab });
   }
