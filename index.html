@@ -982,15 +982,15 @@
     <input type="file" name="K5 Sketch" id="skFile" hidden>
     <datalist id="roomNames"><option>Bedroom</option><option>Bathroom</option><option>Kitchen</option><option>Living room</option><option>Family room</option><option>Dining</option><option>Laundry</option><option>Mudroom</option><option>Office</option><option>Closet</option><option>Pantry</option><option>Hall</option><option>Garage</option><option>Storage / mechanical</option><option>Deck</option><option>Porch</option></datalist>
   </div>
-  <label class="q" for="K1">Sketch or existing plans</label><input type="file" id="K1" name="K1 Sketch or plans" accept=".pdf,.jpg,.jpeg,.png,.heic">
-  <label class="q" for="K2">Survey or site plan</label><input type="file" id="K2" name="K2 Survey" accept=".pdf,.jpg,.jpeg,.png,.heic">
-  <label class="q" for="K3">A photo of the site or space</label><input type="file" id="K3" name="K3 Photo" accept=".jpg,.jpeg,.png,.heic">
-  <label class="q" for="K4">Link to more files (Polycam OBJ zip, photos, video, inspiration)</label><input type="url" id="K4" name="K4 File link" placeholder="https://">
+  <label class="q opt" for="K1">Sketch or existing plans</label><input type="file" id="K1" name="K1 Sketch or plans" accept=".pdf,.jpg,.jpeg,.png,.heic">
+  <label class="q opt" for="K2">Survey or site plan</label><input type="file" id="K2" name="K2 Survey" accept=".pdf,.jpg,.jpeg,.png,.heic">
+  <label class="q opt" for="K3">A photo of the site or space</label><input type="file" id="K3" name="K3 Photo" accept=".jpg,.jpeg,.png,.heic">
+  <label class="q opt" for="K4">Link to more files (Polycam OBJ zip, photos, video, inspiration)</label><input type="url" id="K4" name="K4 File link" placeholder="https://">
 </fieldset>
 
 <fieldset id="sec-L">
   <legend><span class="ltr">L</span><span data-b="Builder responsibilities and sign-off" data-o="Owner responsibilities and sign-off">Builder responsibilities and sign-off</span></legend>
-  <div class="only-builder"><p class="hint">BL Plans is an assumed name of Brenneman Lea Companies LLC. By submitting, the builder agrees to the following:</p>
+  <div class="only-builder"><p class="hint">By submitting, the builder agrees to the following:</p>
   <ol class="terms">
     <li>The information in this form and its attachments is accurate and complete. BL Plans relies on it and is not responsible for errors or omissions caused by inaccurate or incomplete information.</li>
     <li>Dimensions taken from photos, sketches or scans are approximate. The builder will verify all dimensions, elevations and existing conditions in the field before ordering materials or starting work, and will report any discrepancy to BL Plans in writing before proceeding.</li>
@@ -1004,7 +1004,7 @@
     <li>Any material list provided with the drawings is an estimate for convenience only. The builder will verify every quantity, size, grade and product against the approved drawings, field conditions and supplier requirements before ordering. BL Plans is not responsible for shortages, overages or ordering errors.</li>
   </ol>
   <label class="agree"><input type="checkbox" name="L Agreed to terms" value="Yes" data-builder-required> I have read and agree to these terms. <span class="req">*</span></label>
-  </div><div class="only-owner"><p class="hint">BL Plans is an assumed name of Brenneman Lea Companies LLC. By submitting, the owner agrees to the following:</p>
+  </div><div class="only-owner"><p class="hint">By submitting, the owner agrees to the following:</p>
   <ol class="terms">
     <li>The information in this form and its attachments is accurate and complete. BL Plans relies on it and is not responsible for errors or omissions caused by inaccurate or incomplete information.</li>
     <li>Dimensions taken from photos, sketches or scans are approximate. The owner, or the owner's builder, will verify all dimensions, elevations and existing conditions in the field before ordering materials or starting work, and will report any discrepancy to BL Plans in writing before proceeding.</li>
@@ -1483,7 +1483,7 @@
   function markToc() { document.querySelectorAll('.toc a').forEach(function (a) { var f = document.querySelector(a.getAttribute('href')); a.classList.toggle('miss', !!(f && f.querySelector('.miss-q, .miss-a'))); }); }
   function checkAnswers() {
     var bad = [];
-    form.querySelectorAll('label.q').forEach(function (lab) { if (!shown(lab) || lab.classList.contains('is-na') || lab.classList.contains('is-inc')) return; var ans = qAnswer(lab);
+    form.querySelectorAll('label.q').forEach(function (lab) { if (!shown(lab) || lab.classList.contains('opt') || lab.classList.contains('is-na') || lab.classList.contains('is-inc')) return; var ans = qAnswer(lab);
       if (!answered(lab, ans)) bad.push({ el: lab, ans: ans }); });
     // anything else marked required (the portal choice, terms and signature)
     form.querySelectorAll('[required]').forEach(function (el) { if (!shown(el) || bad.some(function (b) { return b.ans === el; })) return;
