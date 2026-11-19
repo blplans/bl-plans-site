@@ -743,6 +743,8 @@
     <label><input type="checkbox" value="New home">New home</label><label><input type="checkbox" value="Addition">Addition</label><label><input type="checkbox" value="Garage">Garage</label><label><input type="checkbox" value="Deck or porch">Deck or porch</label><label><input type="checkbox" value="Remodel">Remodel</label><label><input type="checkbox" value="Basement finish">Basement finish</label><label><input type="checkbox" value="Pole barn or accessory building">Pole barn or accessory building</label><label><input type="checkbox" value="Commercial">Commercial</label><label><input type="checkbox" value="Other">Other</label>
   </div>
   <label class="q" for="B2">B2. Describe the project in a few sentences <span class="req">*</span></label><textarea id="B2" name="B2 Description" required></textarea>
+  <label class="q" for="B10">B10. Who will use the space? <span class="req">*</span></label><select id="B10" name="B10 Who uses the space" required><option value="">Choose one</option><option>Only the people who live here</option><option>Clients, customers or the public will come in (home business, salon, office, studio)</option><option>Renters or tenants</option><option>A business only, no one lives here</option></select>
+  <p class="hint" id="b10Note" hidden>A home business that clients visit can need approval from your city or township's zoning office, and sometimes extra building code items. We'll check your township's rules and note what applies on your drawings.</p>
   <label class="q">B3. What existing construction stays as it is? <span class="req">*</span></label><div class="opts" data-group="B3 Stays" data-required><label><input type="checkbox" value="Nothing, all new">Nothing, all new</label><label><input type="checkbox" value="Foundation">Foundation</label><label><input type="checkbox" value="Exterior walls">Exterior walls</label><label><input type="checkbox" value="Roof">Roof</label><label><input type="checkbox" value="Interior walls">Interior walls</label><label><input type="checkbox" value="Windows and doors">Windows and doors</label><label><input type="checkbox" value="Plumbing">Plumbing</label><label><input type="checkbox" value="Electrical">Electrical</label><label><input type="checkbox" value="Heating and cooling">Heating and cooling</label><label><input type="checkbox" value="Floors">Floors</label></div><input type="text" class="subin" name="B3 Stays details" placeholder="Anything else that stays (optional)">
   <label class="q">B4. What gets removed or demolished?</label><div class="opts" data-group="B4 Removed"><label><input type="checkbox" value="Nothing">Nothing</label><label><input type="checkbox" value="Interior walls">Interior walls</label><label><input type="checkbox" value="Part of an exterior wall">Part of an exterior wall</label><label><input type="checkbox" value="Kitchen cabinets and counters">Kitchen cabinets and counters</label><label><input type="checkbox" value="Bathroom fixtures">Bathroom fixtures</label><label><input type="checkbox" value="Flooring">Flooring</label><label><input type="checkbox" value="Drywall or ceilings">Drywall or ceilings</label><label><input type="checkbox" value="Windows or doors">Windows or doors</label><label><input type="checkbox" value="Deck or porch">Deck or porch</label><label><input type="checkbox" value="Part of the roof">Part of the roof</label><label><input type="checkbox" value="Other (describe below)">Other (describe below)</label></div><textarea class="subin" id="B4" name="B4 Demolition" placeholder="Details, if any (optional)"></textarea>
   <div class="photos" id="demoPhotos">
@@ -976,6 +978,8 @@
   <div class="scanin" id="scanIn" hidden>
     <label for="J5L" class="sub">Scan link</label><input type="url" id="J5L" name="J5 Scan link" placeholder="Paste the Polycam share link" inputmode="url">
     <p class="hint">In Polycam, open the scan, tap Share, choose to share a link, and paste it here.</p>
+    <label for="J5P" class="sub">Floor plan or measurements screenshot (if Polycam shows one)</label><input type="file" id="J5P" name="J5 Floor plan screenshot" accept="image/*,.pdf">
+    <p class="hint">If your scan has a floor plan or measurements view, take a screenshot of it and add it here. It helps us check the sizes.</p>
   </div>
   <div class="scanin" id="scanFile" hidden>
     <label for="J5F" class="sub">Scan file (8 MB or less)</label><input type="file" id="J5F" name="J5 Scan file" accept=".zip,.glb,.gltf,.obj,.pdf,.dxf,.usdz">
@@ -1035,8 +1039,14 @@
   <div class="pcam"><span class="pc-h">SUGGESTED FOR REMODELS, ADDITIONS AND DECKS: SCAN IT WITH POLYCAM</span><span class="pc-t">A free 3D scan of the space gives us exact measurements and cuts down on redraws. Paste the scan's share link in J5 or K4.</span><div class="getapp"><span>Get Polycam:</span><a href="https://apps.apple.com/app/id1532482376" target="_blank" rel="noopener">iPhone and iPad (App Store)</a><a href="https://poly.cam/" target="_blank" rel="noopener">Android and other devices (poly.cam)</a></div></div>
   <label class="q opt" for="K2">Survey or site plan</label><input type="file" id="K2" name="K2 Survey" accept=".pdf,.jpg,.jpeg,.png,.heic">
   <div class="pcam"><span class="pc-h">SUGGESTED FOR REMODELS, ADDITIONS AND DECKS: SCAN IT WITH POLYCAM</span><span class="pc-t">A free 3D scan of the space gives us exact measurements and cuts down on redraws. Paste the scan's share link in J5 or K4.</span><div class="getapp"><span>Get Polycam:</span><a href="https://apps.apple.com/app/id1532482376" target="_blank" rel="noopener">iPhone and iPad (App Store)</a><a href="https://poly.cam/" target="_blank" rel="noopener">Android and other devices (poly.cam)</a></div></div>
-  <label class="q opt" for="K3">A photo of the site or space</label><input type="file" id="K3" name="K3 Photo" accept=".jpg,.jpeg,.png,.heic">
-  <div class="pcam"><span class="pc-h">SUGGESTED FOR REMODELS, ADDITIONS AND DECKS: SCAN IT WITH POLYCAM</span><span class="pc-t">A free 3D scan of the space gives us exact measurements and cuts down on redraws. Paste the scan's share link in J5 or K4.</span><div class="getapp"><span>Get Polycam:</span><a href="https://apps.apple.com/app/id1532482376" target="_blank" rel="noopener">iPhone and iPad (App Store)</a><a href="https://poly.cam/" target="_blank" rel="noopener">Android and other devices (poly.cam)</a></div></div>
+  <div class="photos" id="spacePhotos">
+    <label class="q" for="K3n">K3. Photos of the space <span class="hint">(required for remodels, basements, additions and decks)</span></label>
+    <p class="hint" id="k3Hint">Take a photo of every wall, the ceiling, each door and window, and any plumbing, electrical or ductwork in the way. Up to 8 photos. They're shrunk on your phone before sending, so they go quickly.</p>
+    <label class="phpick"><input type="file" id="spacePick" accept="image/*" multiple><span>Add photos of the space</span></label>
+    <ul class="phlist" id="spaceList"></ul>
+    <p class="hint" id="spaceMsg" aria-live="polite"></p>
+    <input type="hidden" id="K3n" name="K3 Photo count"><input type="file" name="K3 Photo 1" class="sp-slot" hidden><input type="file" name="K3 Photo 2" class="sp-slot" hidden><input type="file" name="K3 Photo 3" class="sp-slot" hidden><input type="file" name="K3 Photo 4" class="sp-slot" hidden><input type="file" name="K3 Photo 5" class="sp-slot" hidden><input type="file" name="K3 Photo 6" class="sp-slot" hidden><input type="file" name="K3 Photo 7" class="sp-slot" hidden><input type="file" name="K3 Photo 8" class="sp-slot" hidden>
+  </div>
   <label class="q opt" for="K4">Link to more files (Polycam OBJ zip, photos, video, inspiration)</label><input type="url" id="K4" name="K4 File link" placeholder="https://">
   <div class="pcam"><span class="pc-h">SUGGESTED FOR REMODELS, ADDITIONS AND DECKS: SCAN IT WITH POLYCAM</span><span class="pc-t">Paste your Polycam share link here, or a Dropbox or Google Drive link to a zipped scan, photos or video.</span><div class="getapp"><span>Get Polycam:</span><a href="https://apps.apple.com/app/id1532482376" target="_blank" rel="noopener">iPhone and iPad (App Store)</a><a href="https://poly.cam/" target="_blank" rel="noopener">Android and other devices (poly.cam)</a></div></div>
 </fieldset>
@@ -1436,7 +1446,7 @@
 
   // "Doesn't apply" switch on every question from section C on.
   var naSet = {}, incSet = {};
-  var noNA = ['D1', 'D6', 'L'];
+  var noNA = ['D1', 'D6', 'K3', 'L'];
   function naUpdate() { document.getElementById('naField').value = Object.keys(naSet).sort().join(', '); document.getElementById('incField').value = Object.keys(incSet).sort().join(', '); }
   Array.prototype.forEach.call(form.querySelectorAll('label.q'), function (lab) {
     var m = lab.textContent.trim().match(/^([A-Z]\d+)\./); if (!m || noNA.indexOf(m[1]) > -1 || m[1][0] === 'L') return;
@@ -1513,6 +1523,41 @@
       });
     });
   })();
+  // Photos of the space: shrink each on the device, then one per hidden upload field. Required when the job changes an existing building.
+  (function () {
+    var pick = document.getElementById('spacePick'), list = document.getElementById('spaceList'), msg = document.getElementById('spaceMsg'), slots = form.querySelectorAll('.sp-slot'), count = document.getElementById('K3n'), photos = [];
+    function shrink(file) { return new Promise(function (res) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () { var k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement('canvas');
+        c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+        c.toBlob(function (b) { res(b); }, 'image/jpeg', 0.72); };
+      img.onerror = function () { URL.revokeObjectURL(url); res(file.size < 1.5 * 1024 * 1024 ? file : null); };
+      img.src = url; }); }
+    function sync() {
+      var put = 0;
+      slots.forEach(function (sl, i) { try { var dt = new DataTransfer(); if (photos[i]) dt.items.add(new File([photos[i].blob], 'space-photo-' + (i + 1) + '.jpg', { type: photos[i].blob.type || 'image/jpeg' })); sl.files = dt.files; if (photos[i] && sl.files.length) put++; } catch (e) {} });
+      count.value = photos.length ? String(photos.length) : '';
+      if (photos.length && put < photos.length) msg.textContent = "Your browser couldn't attach these photos. Please send them as a Google Drive or Dropbox link in K4, or reply to our email with them.";
+      list.innerHTML = '';
+      photos.forEach(function (p, i) { var li = document.createElement('li'), im = document.createElement('img'), x = document.createElement('button');
+        im.src = p.url; im.alt = 'Photo of the space ' + (i + 1);
+        x.type = 'button'; x.textContent = 'Remove'; x.addEventListener('click', function () { URL.revokeObjectURL(p.url); photos.splice(i, 1); sync(); });
+        li.appendChild(im); li.appendChild(x); list.appendChild(li); });
+      count.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    pick.addEventListener('change', function () {
+      var files = Array.prototype.slice.call(pick.files), room = slots.length - photos.length, skipped = 0;
+      if (files.length > room) { skipped = files.length - room; files = files.slice(0, room); }
+      msg.textContent = files.length ? 'Getting ' + files.length + (files.length === 1 ? ' photo' : ' photos') + ' ready...' : '';
+      Promise.all(files.map(shrink)).then(function (blobs) { var bad = 0;
+        blobs.forEach(function (b) { if (b) photos.push({ blob: b, url: URL.createObjectURL(b) }); else bad++; });
+        msg.textContent = (skipped ? skipped + ' not added: the limit is 8 photos. ' : '') + (bad ? bad + " couldn't be read. Try a JPG or PNG copy. " : '');
+        sync(); pick.value = '';
+      });
+    });
+    var b10 = document.getElementById('B10'), b10n = document.getElementById('b10Note');
+    b10.addEventListener('change', function () { b10n.hidden = !/Clients|business/.test(b10.value); });
+  })();
   // 3D scan: link or file field appears for the choice made in J5.
   (function () { var sel = document.getElementById('J5'), li = document.getElementById('scanIn'), fi = document.getElementById('scanFile');
     function upd() { var v = sel.hidden ? '' : sel.value; li.hidden = !/link/.test(v); fi.hidden = !/file/.test(v);
@@ -1525,6 +1570,7 @@
   function shown(el) { return !el.closest('[hidden]') && el.offsetParent !== null; }
   function answered(lab, ans) { var code = (lab.textContent.trim().match(/^([A-Z]\d+)\./) || [])[1];
     if (code === 'K5') return !!document.getElementById('skDetails').value || !!document.getElementById('skDesc').value.trim();
+    if (code === 'K3') { var sj = document.getElementById('sec-J'); return !(sj && shown(sj)) || +document.getElementById('K3n').value > 0; }
     if (code === 'B8') { var v = document.getElementById('roomField').value; return !!v && v.indexOf('not marked') < 0; }
     if (!ans) return true;
     if (ans.matches('.dw-ft')) { var row = ans.closest('.dimrow'); return !!row.querySelector('input[type=hidden]').value; }
